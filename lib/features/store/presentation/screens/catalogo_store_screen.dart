@@ -44,6 +44,9 @@ class CatalogoStoreScreen extends HookWidget {
                   .doc(FirebaseAuth.instance.currentUser!.uid)
                   .snapshots(),
               builder: (context, snapshot) {
+                if (snapshot.hasError) {
+                  return const SizedBox.shrink(); // Si Firestore deniega el permiso, oculta el botón elegantemente sin romper la UI.
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Padding(
                     padding: EdgeInsets.symmetric(horizontal: 16.0),

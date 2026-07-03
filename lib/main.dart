@@ -19,6 +19,12 @@ void main() async {
         appId: '1:342410021995:web:20671c62f0e4373217352e',
       ),
     );
+
+    // Desactivar persistencia de Firestore para evitar que el IndexedDB corrupto en Web
+    // congele los streams de Firestore (como la verificación de roles o carga de catálogo)
+    FirebaseFirestore.instance.settings = const Settings(
+      persistenceEnabled: false,
+    );
   } catch (e) {
     // Si Firebase falla, lo atrapamos aquí para evitar que bloquee el renderizado de la UI
     print("⚠️ Error crítico de inicialización de Firebase: $e");
