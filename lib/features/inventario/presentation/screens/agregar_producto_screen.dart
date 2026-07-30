@@ -58,6 +58,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
   final _cpuTdpController = TextEditingController();
   final _cpuGraficosController = TextEditingController();
   bool _specsEditables = false;
+  bool _esGratisSinCosto = false;
   String _estadoSeleccionado = 'Disponible';
 
   String? _marcaSeleccionada;
@@ -1800,6 +1801,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                         items: const [
                           DropdownMenuItem(value: 'Disponible', child: Text('🟢 Disponible (Stock)', style: TextStyle(color: Colors.white))),
                           DropdownMenuItem(value: 'En Uso', child: Text('🔵 En Uso (Asignado)', style: TextStyle(color: Colors.white))),
+                          DropdownMenuItem(value: 'Por Probar', child: Text('🟡 Por Probar (Sin Verificar)', style: TextStyle(color: Colors.white))),
                           DropdownMenuItem(value: 'En Mantenimiento', child: Text('🟠 En Mantenimiento', style: TextStyle(color: Colors.white))),
                           DropdownMenuItem(value: 'Defectuoso', child: Text('🔴 Defectuoso (Scrap)', style: TextStyle(color: Colors.white))),
                         ],
@@ -1816,25 +1818,75 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(height: 12),
 
-                // Precio de Adquisición / Compra
-                TextFormField(
-                  controller: _precioAdquisicionController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  style: const TextStyle(color: Colors.white, fontSize: 13),
-                  onChanged: (val) {
-                    final double pCompra = double.tryParse(val.trim().replaceAll(',', '.')) ?? 0.0;
-                    if (pCompra > 0 && _precioObjetivoVentaController.text.isEmpty) {
-                      _precioObjetivoVentaController.text = (pCompra * 1.30).toStringAsFixed(2);
-                    }
-                    setState(() {});
-                  },
-                  decoration: const InputDecoration(
-                    labelText: r'Precio de Compra / Adquisición (USD $)',
-                    labelStyle: TextStyle(color: Colors.grey, fontSize: 12),
-                    hintText: 'Ej: 150.00',
-                    prefixIcon: Icon(Icons.attach_money, color: Color(0xFF3AD8FF)),
-                    border: OutlineInputBorder(),
-                  ),
+                // Precio de Adquisición / Compra con opción Costo $0 (Donación / Regalo)
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _precioAdquisicionController,
+                        enabled: !_esGratisSinCosto,
+                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        style: TextStyle(
+                          color: _esGratisSinCosto ? Colors.greenAccent : Colors.white,
+                          fontSize: 13,
+                          fontWeight: _esGratisSinCosto ? FontWeight.bold : FontWeight.normal,
+                        ),
+                        onChanged: (val) {
+                          final double pCompra = double.tryParse(val.trim().replaceAll(',', '.')) ?? 0.0;
+                          if (pCompra > 0 && _precioObjetivoVentaController.text.isEmpty) {
+                            _precioObjetivoVentaController.text = (pCompra * 1.30).toStringAsFixed(2);
+                          }
+                          setState(() {});
+                        },
+                        decoration: InputDecoration(
+                          labelText: _esGratisSinCosto
+                              ? r'Precio de Compra: $0.00 (Regalo / Donación)'
+                              : r'Precio de Compra / Adquisición (USD $)',
+                          labelStyle: TextStyle(
+                            color: _esGratisSinCosto ? Colors.greenAccent : Colors.grey,
+                            fontSize: 12,
+                          ),
+                          hintText: _esGratisSinCosto ? '0.00' : 'Ej: 150.00',
+                          prefixIcon: Icon(
+                            _esGratisSinCosto ? Icons.card_giftcard : Icons.attach_money,
+                            color: _esGratisSinCosto ? Colors.greenAccent : const Color(0xFF3AD8FF),
+                          ),
+                          border: const OutlineInputBorder(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    FilterChip(
+                      selected: _esGratisSinCosto,
+                      avatar: Icon(
+                        Icons.card_giftcard,
+                        size: 16,
+                        color: _esGratisSinCosto ? const Color(0xFF050B14) : Colors.greenAccent,
+                      ),
+                      label: const Text(r'Costo $0 (Regalo / Donación)'),
+                      labelStyle: TextStyle(
+                        color: _esGratisSinCosto ? const Color(0xFF050B14) : Colors.greenAccent,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 11,
+                      ),
+                      selectedColor: Colors.greenAccent,
+                      backgroundColor: const Color(0xFF050B14),
+                      side: BorderSide(
+                        color: _esGratisSinCosto ? Colors.greenAccent : Colors.greenAccent.withValues(alpha: 0.5),
+                      ),
+                      onSelected: (selected) {
+                        setState(() {
+                          _esGratisSinCosto = selected;
+                          if (selected) {
+                            _precioAdquisicionController.text = '0';
+                          } else {
+                            _precioAdquisicionController.clear();
+                          }
+                        });
+                      },
+                    ),
+                  ],
                 ),
                 const SizedBox(height: 12),
 
@@ -2419,6 +2471,27 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
     );
   }
 
+  void _actualizarResumenPuertosGabinete() {
+    List<String> partes = [];
+    final u2 = _specsDinamicas['puertos_usb_2_0'] ?? 0;
+    final u3 = _specsDinamicas['puertos_usb_3_0'] ?? 0;
+    final uc = _specsDinamicas['puertos_usb_c'] ?? 0;
+    final hdmi = _specsDinamicas['puertos_hdmi_frontal'] ?? 0;
+    final dp = _specsDinamicas['puertos_dp_frontal'] ?? 0;
+    final audio = _specsDinamicas['conector_audio_frontal'];
+    final botones = _specsDinamicas['botones_panel_frontal'];
+
+    if (u3 > 0) partes.add('${u3}x USB 3.0');
+    if (uc > 0) partes.add('${uc}x USB-C');
+    if (u2 > 0) partes.add('${u2}x USB 2.0');
+    if (hdmi > 0) partes.add('${hdmi}x HDMI');
+    if (dp > 0) partes.add('${dp}x DisplayPort');
+    if (audio != null && audio.toString().isNotEmpty) partes.add(audio.toString());
+    if (botones != null && botones.toString().isNotEmpty) partes.add(botones.toString());
+
+    _specsDinamicas['puertos_panel_frontal'] = partes.isNotEmpty ? partes.join(', ') : 'Sin especificar';
+  }
+
   Widget _construirCamposTecnicosDinamicos() {
     switch (_categoriaSeleccionada) {
       case 'procesador_cpu':
@@ -2572,20 +2645,18 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            DropdownButtonFormField<String>(
-              decoration: const InputDecoration(
-                labelText: 'Factor de Forma',
-                border: OutlineInputBorder(),
-              ),
+            _buildCustomDropdown<String>(
+              labelText: 'Factor de Forma',
+              value: _specsDinamicas['factor_forma'],
               items: const [
-                DropdownMenuItem(value: 'ATX', child: Text('ATX')),
-                DropdownMenuItem(value: 'Micro-ATX', child: Text('Micro-ATX')),
-                DropdownMenuItem(value: 'Mini-ITX', child: Text('Mini-ITX')),
-                DropdownMenuItem(value: 'E-ATX', child: Text('E-ATX')),
+                DropdownMenuItem(value: 'ATX', child: Text('ATX', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Micro-ATX', child: Text('Micro-ATX', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Mini-ITX', child: Text('Mini-ITX', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'E-ATX', child: Text('E-ATX', style: TextStyle(color: Colors.white))),
               ],
               validator: (val) =>
                   val == null ? 'Seleccione un factor de forma' : null,
-              onChanged: (val) => _specsDinamicas['factor_forma'] = val,
+              onChanged: (val) => setState(() => _specsDinamicas['factor_forma'] = val),
             ),
             const SizedBox(height: 12),
             Row(
@@ -2601,16 +2672,14 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Socket',
-                      border: OutlineInputBorder(),
-                    ),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Socket',
+                    value: _specsDinamicas['socket'],
                     items: todosLosSockets
-                        .map((s) => DropdownMenuItem(value: s, child: Text(s)))
+                        .map((s) => DropdownMenuItem(value: s, child: Text(s, style: const TextStyle(color: Colors.white))))
                         .toList(),
                     validator: (val) => val == null ? 'Obligatorio' : null,
-                    onChanged: (val) => _specsDinamicas['socket'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['socket'] = val),
                   ),
                 ),
               ],
@@ -2632,18 +2701,19 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(
-                      labelText: 'Tipo de Memoria',
-                      border: OutlineInputBorder(),
-                    ),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo de Memoria',
+                    value: _specsDinamicas['tipo_memoria_soportada'],
                     items: const [
-                      DropdownMenuItem(value: 'DDR4', child: Text('DDR4')),
-                      DropdownMenuItem(value: 'DDR5', child: Text('DDR5')),
+                      DropdownMenuItem(value: 'DDR5', child: Text('DDR5', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR4', child: Text('DDR4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR3', child: Text('DDR3', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR2', child: Text('DDR2', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR4 / DDR3 (Combo)', child: Text('DDR4 / DDR3 (Combo)', style: TextStyle(color: Colors.white))),
                     ],
                     validator: (val) => val == null ? 'Obligatorio' : null,
                     onChanged: (val) =>
-                        _specsDinamicas['tipo_memoria_soportada'] = val,
+                        setState(() => _specsDinamicas['tipo_memoria_soportada'] = val),
                   ),
                 ),
               ],
@@ -2706,13 +2776,17 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo Memoria', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo Memoria',
+                    value: _specsDinamicas['tipo_memoria'],
                     items: const [
-                      DropdownMenuItem(value: 'DDR4', child: Text('DDR4')),
-                      DropdownMenuItem(value: 'DDR5', child: Text('DDR5')),
+                      DropdownMenuItem(value: 'DDR5', child: Text('DDR5', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR4', child: Text('DDR4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR3', child: Text('DDR3', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR2', child: Text('DDR2', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR', child: Text('DDR (Legacy)', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_memoria'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_memoria'] = val),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2750,86 +2824,85 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
 
       case 'almacenamiento_ssd_hdd':
       case 'ssd_storage':
-        return Column(
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo/Tecnología', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'NVMe M.2', child: Text('NVMe M.2')),
-                      DropdownMenuItem(value: 'SATA', child: Text('SATA')),
-                    ],
-                    onChanged: (val) => _specsDinamicas['tipo_tecnologia'] = val,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Interfaz (ej: PCIe 4.0)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['interfaz_conexion'] = val.trim(),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Capacidad Total (ej: 1TB)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['capacidad_total'] = val.trim(),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Vida Útil (TBW)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['vida_util_tbw'] = int.tryParse(val) ?? 0,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Velocidad Lectura (MB/s)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['velocidad_lectura_mb_s'] = int.tryParse(val) ?? 0,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Velocidad Escritura (MB/s)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['velocidad_escritura_mb_s'] = int.tryParse(val) ?? 0,
-                  ),
-                ),
-              ],
-            ),
-          ],
-        );
-
       case 'hdd_storage':
+        final String tipoActual = _specsDinamicas['tipo_tecnologia'] ??
+            (_categoriaSeleccionada == 'hdd_storage' ? 'HDD' : 'SSD');
+        final bool esHdd = tipoActual == 'HDD' || _categoriaSeleccionada == 'hdd_storage';
+        final bool esNvme = tipoActual == 'NVMe M.2' || tipoActual == 'NVMe';
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Interfaz (ej: SATA III)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['interfaz_conexion'] = val.trim(),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo de Almacenamiento',
+                    value: _specsDinamicas['tipo_tecnologia'] ?? (_categoriaSeleccionada == 'hdd_storage' ? 'HDD' : 'SSD'),
+                    items: const [
+                      DropdownMenuItem(value: 'SSD', child: Text('SSD (SATA 2.5")', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HDD', child: Text('HDD (Disco Duro)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'NVMe M.2', child: Text('NVMe M.2 (PCIe)', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        setState(() {
+                          _specsDinamicas['tipo_tecnologia'] = val;
+                          if (val == 'HDD') {
+                            _specsDinamicas['factor_forma'] = '3.5"';
+                            _specsDinamicas['interfaz_conexion'] = 'SATA III (6 Gb/s)';
+                          } else if (val == 'NVMe M.2') {
+                            _specsDinamicas['factor_forma'] = 'M.2 2280';
+                            _specsDinamicas['interfaz_conexion'] = 'PCIe 4.0 x4';
+                          } else {
+                            _specsDinamicas['factor_forma'] = '2.5"';
+                            _specsDinamicas['interfaz_conexion'] = 'SATA III (6 Gb/s)';
+                          }
+                        });
+                      }
+                    },
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Interfaz de Conexión',
+                    value: _specsDinamicas['interfaz_conexion'] ??
+                        (esNvme ? 'PCIe 4.0 x4' : 'SATA III (6 Gb/s)'),
+                    items: const [
+                      DropdownMenuItem(value: 'SATA III (6 Gb/s)', child: Text('SATA III (6 Gb/s)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PCIe 4.0 x4', child: Text('PCIe 4.0 x4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PCIe 3.0 x4', child: Text('PCIe 3.0 x4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PCIe 5.0 x4', child: Text('PCIe 5.0 x4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'SATA II', child: Text('SATA II', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'USB 3.2 / Type-C', child: Text('USB 3.2 / Type-C', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) => setState(() => _specsDinamicas['interfaz_conexion'] = val),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildCustomDropdown<String>(
+                    labelText: esHdd ? 'Tamaño Disco Duro' : 'Factor de Forma / Tamaño',
+                    value: _specsDinamicas['factor_forma'] ??
+                        (esHdd ? '3.5"' : (esNvme ? 'M.2 2280' : '2.5"')),
+                    items: const [
+                      DropdownMenuItem(value: '3.5"', child: Text('3.5" (Desktop / PC)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '2.5"', child: Text('2.5" (Laptop / SFF)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'M.2 2280', child: Text('M.2 2280', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'M.2 2230', child: Text('M.2 2230', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) => setState(() => _specsDinamicas['factor_forma'] = val),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Capacidad Total (ej: 2TB)', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Capacidad Total (ej: 512GB, 1TB)', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['capacidad_total'] = val.trim(),
                   ),
                 ),
@@ -2838,31 +2911,40 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
             const SizedBox(height: 12),
             Row(
               children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Factor de Forma', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: '3.5"', child: Text('3.5"')),
-                      DropdownMenuItem(value: '2.5"', child: Text('2.5"')),
-                    ],
-                    onChanged: (val) => _specsDinamicas['factor_forma'] = val,
+                if (esHdd) ...[
+                  Expanded(
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Velocidad RPM (ej: 7200, 5400)', border: OutlineInputBorder()),
+                      onChanged: (val) => _specsDinamicas['velocidad_rotacion_rpm'] = int.tryParse(val) ?? 0,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Velocidad RPM', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['velocidad_rotacion_rpm'] = int.tryParse(val) ?? 0,
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Caché (MB)', border: OutlineInputBorder()),
+                      onChanged: (val) => _specsDinamicas['memoria_cache_mb'] = int.tryParse(val) ?? 0,
+                    ),
                   ),
-                ),
+                ] else ...[
+                  Expanded(
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Velocidad Lectura (MB/s)', border: OutlineInputBorder()),
+                      onChanged: (val) => _specsDinamicas['velocidad_lectura_mb_s'] = int.tryParse(val) ?? 0,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextFormField(
+                      keyboardType: TextInputType.number,
+                      decoration: const InputDecoration(labelText: 'Velocidad Escritura (MB/s)', border: OutlineInputBorder()),
+                      onChanged: (val) => _specsDinamicas['velocidad_escritura_mb_s'] = int.tryParse(val) ?? 0,
+                    ),
+                  ),
+                ],
               ],
-            ),
-            const SizedBox(height: 12),
-            TextFormField(
-              keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Caché (MB)', border: OutlineInputBorder()),
-              onChanged: (val) => _specsDinamicas['memoria_cache_mb'] = int.tryParse(val) ?? 0,
             ),
           ],
         );
@@ -2899,13 +2981,24 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo VRAM', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo VRAM',
+                    value: _specsDinamicas['tipo_vram'],
                     items: const [
-                      DropdownMenuItem(value: 'GDDR6', child: Text('GDDR6')),
-                      DropdownMenuItem(value: 'GDDR6X', child: Text('GDDR6X')),
+                      DropdownMenuItem(value: 'GDDR7', child: Text('GDDR7', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR6X', child: Text('GDDR6X', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR6', child: Text('GDDR6', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR5X', child: Text('GDDR5X', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR5', child: Text('GDDR5', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR4', child: Text('GDDR4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'GDDR3', child: Text('GDDR3', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HBM3', child: Text('HBM3 / HBM3e', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HBM2', child: Text('HBM2 / HBM2e', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HBM', child: Text('HBM', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR4', child: Text('DDR4 (Compartida)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'DDR5', child: Text('DDR5 (Compartida)', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_vram'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_vram'] = val),
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -2965,17 +3058,21 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Certificación', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Certificación',
+                    value: _specsDinamicas['certificacion_eficiencia'],
                     items: const [
-                      DropdownMenuItem(value: '80 Plus White', child: Text('80 Plus White')),
-                      DropdownMenuItem(value: '80 Plus Bronze', child: Text('80 Plus Bronze')),
-                      DropdownMenuItem(value: '80 Plus Silver', child: Text('80 Plus Silver')),
-                      DropdownMenuItem(value: '80 Plus Gold', child: Text('80 Plus Gold')),
-                      DropdownMenuItem(value: '80 Plus Platinum', child: Text('80 Plus Platinum')),
-                      DropdownMenuItem(value: '80 Plus Titanium', child: Text('80 Plus Titanium')),
+                      DropdownMenuItem(value: 'Sin Certificación', child: Text('Sin Certificación (Genérica)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus White', child: Text('80 Plus White / Standard', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus Bronze', child: Text('80 Plus Bronze', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus Silver', child: Text('80 Plus Silver', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus Gold', child: Text('80 Plus Gold', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus Platinum', child: Text('80 Plus Platinum', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '80 Plus Titanium', child: Text('80 Plus Titanium', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Cybenetics Bronze', child: Text('Cybenetics Bronze', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Cybenetics Gold', child: Text('Cybenetics Gold / Platinum', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['certificacion_eficiencia'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['certificacion_eficiencia'] = val),
                   ),
                 ),
               ],
@@ -2984,42 +3081,53 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Modularidad', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Modularidad',
+                    value: _specsDinamicas['tipo_modularidad'],
                     items: const [
-                      DropdownMenuItem(value: 'No modular', child: Text('No modular')),
-                      DropdownMenuItem(value: 'Semi-modular', child: Text('Semi-modular')),
-                      DropdownMenuItem(value: 'Full modular', child: Text('Full modular')),
+                      DropdownMenuItem(value: 'No modular', child: Text('No modular', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Semi-modular', child: Text('Semi-modular', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Full modular', child: Text('Full modular', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_modularidad'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_modularidad'] = val),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Factor de Forma', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Factor de Forma',
+                    value: _specsDinamicas['factor_forma'],
                     items: const [
-                      DropdownMenuItem(value: 'ATX', child: Text('ATX')),
-                      DropdownMenuItem(value: 'SFX', child: Text('SFX')),
+                      DropdownMenuItem(value: 'ATX', child: Text('ATX', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'SFX', child: Text('SFX', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['factor_forma'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['factor_forma'] = val),
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 12),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Protecciones Activas (OVP, UVP, OPP...)', border: OutlineInputBorder()),
-              onChanged: (val) => _specsDinamicas['protecciones_activas'] = val.trim(),
+            _buildCustomDropdown<String>(
+              labelText: 'Protecciones Activas',
+              value: _specsDinamicas['protecciones_activas'],
+              items: const [
+                DropdownMenuItem(value: 'OVP / UVP / OPP / SCP / OCP / OTP', child: Text('OVP / UVP / OPP / SCP / OCP / OTP (Protección Completa)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'OVP / UVP / OPP / SCP', child: Text('OVP / UVP / OPP / SCP (Estándar)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'OVP / OPP / SCP', child: Text('OVP / OPP / SCP (Básica Avanzada)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'OVP / SCP', child: Text('OVP / SCP (Básica)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Sin Protecciones', child: Text('Sin Protecciones Documentadas', style: TextStyle(color: Colors.white))),
+              ],
+              onChanged: (val) => setState(() => _specsDinamicas['protecciones_activas'] = val),
             ),
           ],
         );
 
       case 'gabinete_chasis':
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             TextFormField(
-              decoration: const InputDecoration(labelText: 'Placas soportadas (ej: ATX, Micro-ATX)', border: OutlineInputBorder()),
+              decoration: const InputDecoration(labelText: 'Placas soportadas (ej: ATX, Micro-ATX, Mini-ITX)', border: OutlineInputBorder()),
               onChanged: (val) => _specsDinamicas['formatos_placa_soportados'] = val.trim(),
             ),
             const SizedBox(height: 12),
@@ -3027,14 +3135,14 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
               children: [
                 Expanded(
                   child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Materiales (ej: Acero, Cristal)', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Materiales (ej: Acero SPCC, Cristal Templado)', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['materiales_construccion'] = val.trim(),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Bahías', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Bahías (ej: 2x 3.5", 2x 2.5")', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['bahias_unidades'] = val.trim(),
                   ),
                 ),
@@ -3060,10 +3168,129 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
-            TextFormField(
-              decoration: const InputDecoration(labelText: 'Puertos Panel Frontal (ej: 2x USB 3.0, Audio)', border: OutlineInputBorder()),
-              onChanged: (val) => _specsDinamicas['puertos_panel_frontal'] = val.trim(),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFF050B14),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFF3AD8FF).withValues(alpha: 0.3)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Row(
+                    children: [
+                      Icon(Icons.usb_rounded, color: Color(0xFF3AD8FF), size: 18),
+                      SizedBox(width: 8),
+                      Text(
+                        'Panel Frontal / Conectores de I/O',
+                        style: TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.bold, fontSize: 13),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Cant. USB 2.0', border: OutlineInputBorder()),
+                          onChanged: (val) {
+                            _specsDinamicas['puertos_usb_2_0'] = int.tryParse(val) ?? 0;
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Cant. USB 3.0 / 3.2', border: OutlineInputBorder()),
+                          onChanged: (val) {
+                            _specsDinamicas['puertos_usb_3_0'] = int.tryParse(val) ?? 0;
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Cant. USB Type-C', border: OutlineInputBorder()),
+                          onChanged: (val) {
+                            _specsDinamicas['puertos_usb_c'] = int.tryParse(val) ?? 0;
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Cant. HDMI Frontal', border: OutlineInputBorder()),
+                          onChanged: (val) {
+                            _specsDinamicas['puertos_hdmi_frontal'] = int.tryParse(val) ?? 0;
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: TextFormField(
+                          keyboardType: TextInputType.number,
+                          decoration: const InputDecoration(labelText: 'Cant. DisplayPort Frontal', border: OutlineInputBorder()),
+                          onChanged: (val) {
+                            _specsDinamicas['puertos_dp_frontal'] = int.tryParse(val) ?? 0;
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildCustomDropdown<String>(
+                          labelText: 'Conector de Audio',
+                          value: _specsDinamicas['conector_audio_frontal'],
+                          items: const [
+                            DropdownMenuItem(value: '1x Combo Audio/Mic (Jack 3.5mm)', child: Text('1x Combo Audio/Mic', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: '2x HD Audio (Audio + Mic separado)', child: Text('2x HD Audio (Audio + Mic)', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'Sin Audio Frontal', child: Text('Sin Audio Frontal', style: TextStyle(color: Colors.white))),
+                          ],
+                          onChanged: (val) {
+                            setState(() => _specsDinamicas['conector_audio_frontal'] = val);
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildCustomDropdown<String>(
+                          labelText: 'Botones / Controladores',
+                          value: _specsDinamicas['botones_panel_frontal'],
+                          items: const [
+                            DropdownMenuItem(value: 'Power + Reset', child: Text('Power + Reset', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'Power + Reset + Botón RGB', child: Text('Power + Reset + Botón RGB', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'Power + Botón LED', child: Text('Power + Botón LED', style: TextStyle(color: Colors.white))),
+                            DropdownMenuItem(value: 'Solo Botón Power', child: Text('Solo Botón Power', style: TextStyle(color: Colors.white))),
+                          ],
+                          onChanged: (val) {
+                            setState(() => _specsDinamicas['botones_panel_frontal'] = val);
+                            _actualizarResumenPuertosGabinete();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -3074,20 +3301,30 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo Disipación', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo Disipación',
+                    value: _specsDinamicas['tipo_disipacion'],
                     items: const [
-                      DropdownMenuItem(value: 'Aire', child: Text('Aire')),
-                      DropdownMenuItem(value: 'Líquida/AIO', child: Text('Líquida/AIO')),
+                      DropdownMenuItem(value: 'Aire', child: Text('Aire', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Líquida/AIO', child: Text('Líquida/AIO', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_disipacion'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_disipacion'] = val),
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Sockets (ej: AM4, LGA 1700)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['sockets_compatibles'] = val.trim(),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Sockets Compatibles',
+                    value: _specsDinamicas['sockets_compatibles'],
+                    items: const [
+                      DropdownMenuItem(value: 'Universal (LGA 1700/1200 + AM5/AM4)', child: Text('Universal (LGA1700/1200 + AM5/AM4)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Intel LGA 1700 / 1200 / 115X', child: Text('Intel LGA 1700 / 1200 / 115X', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'AMD AM5 / AM4', child: Text('AMD AM5 / AM4', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Intel LGA 2066 / 2011 (HEDT)', child: Text('Intel LGA 2066 / 2011 (HEDT)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'AMD TR4 / sTRX4 (Threadripper)', child: Text('AMD TR4 / sTRX4 (Threadripper)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Sockets Antiguos / Específicos', child: Text('Sockets Antiguos / Específicos', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) => setState(() => _specsDinamicas['sockets_compatibles'] = val),
                   ),
                 ),
               ],
@@ -3096,10 +3333,22 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
             Row(
               children: [
                 Expanded(
-                  child: TextFormField(
-                    keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'Ventiladores Incluidos', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['cantidad_ventiladores'] = int.tryParse(val) ?? 0,
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Ventiladores Incluidos',
+                    value: _specsDinamicas['cantidad_ventiladores'] != null ? '${_specsDinamicas['cantidad_ventiladores']} Ventilador(es)' : null,
+                    items: const [
+                      DropdownMenuItem(value: '0 Ventilador(es)', child: Text('0 (Pasivo / Sin Ventilador)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '1 Ventilador(es)', child: Text('1 Ventilador', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '2 Ventilador(es)', child: Text('2 Ventiladores (Push-Pull)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '3 Ventilador(es)', child: Text('3 Ventiladores', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '4 Ventilador(es)', child: Text('4 Ventiladores', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        final cant = int.tryParse(val.split(' ')[0]) ?? 0;
+                        setState(() => _specsDinamicas['cantidad_ventiladores'] = cant);
+                      }
+                    },
                   ),
                 ),
                 const SizedBox(width: 12),
@@ -3148,14 +3397,16 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo de Rodamiento', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo de Rodamiento (Opcional)',
+                    value: _specsDinamicas['tipo_rodamiento'],
                     items: const [
-                      DropdownMenuItem(value: 'Fluido', child: Text('Fluido')),
-                      DropdownMenuItem(value: 'Magnético', child: Text('Magnético')),
-                      DropdownMenuItem(value: 'Bolas', child: Text('Bolas')),
+                      DropdownMenuItem(value: 'Fluido', child: Text('Fluido (Fluid Dynamic)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Magnético', child: Text('Levitación Magnética', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Bolas', child: Text('Doble Rodamiento de Bolas', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Sleeve', child: Text('Sleeve Bearing (Genérico)', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_rodamiento'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_rodamiento'] = val),
                   ),
                 ),
               ],
@@ -3166,7 +3417,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 Expanded(
                   child: TextFormField(
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Flujo de Aire (CFM)', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Flujo de Aire (CFM) [Opcional]', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['flujo_aire_cfm'] = double.tryParse(val) ?? 0.0,
                   ),
                 ),
@@ -3174,7 +3425,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 Expanded(
                   child: TextFormField(
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Presión Estática (mmH2O)', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Presión Estática (mmH2O) [Opcional]', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['presion_estatica_mmh2o'] = double.tryParse(val) ?? 0.0,
                   ),
                 ),
@@ -3186,15 +3437,24 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 Expanded(
                   child: TextFormField(
                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                    decoration: const InputDecoration(labelText: 'Nivel Ruido (dBA)', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'Nivel Ruido (dBA) [Opcional]', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['nivel_ruido_dba'] = double.tryParse(val) ?? 0.0,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: TextFormField(
-                    decoration: const InputDecoration(labelText: 'Conectores (ej: 4-pin PWM, 3-pin ARGB)', border: OutlineInputBorder()),
-                    onChanged: (val) => _specsDinamicas['conectores'] = val.trim(),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Conectores',
+                    value: _specsDinamicas['conectores'],
+                    items: const [
+                      DropdownMenuItem(value: '4-Pin PWM', child: Text('4-Pin PWM (Control Inteligente)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '3-Pin DC', child: Text('3-Pin DC (Control por Voltaje)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '4-Pin PWM + 3-Pin 5V ARGB', child: Text('4-Pin PWM + 3-Pin 5V ARGB', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: '4-Pin PWM + 4-Pin 12V RGB', child: Text('4-Pin PWM + 4-Pin 12V RGB', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Molex 4-Pin', child: Text('Molex 4-Pin (Directo a PSU)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Conector Propietario (Hub)', child: Text('Conector Propietario (Hub)', style: TextStyle(color: Colors.white))),
+                    ],
+                    onChanged: (val) => setState(() => _specsDinamicas['conectores'] = val),
                   ),
                 ),
               ],
@@ -3216,15 +3476,16 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo de Panel', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo de Panel',
+                    value: _specsDinamicas['tipo_panel'],
                     items: const [
-                      DropdownMenuItem(value: 'IPS', child: Text('IPS')),
-                      DropdownMenuItem(value: 'VA', child: Text('VA')),
-                      DropdownMenuItem(value: 'TN', child: Text('TN')),
-                      DropdownMenuItem(value: 'OLED', child: Text('OLED')),
+                      DropdownMenuItem(value: 'IPS', child: Text('IPS', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'VA', child: Text('VA', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'TN', child: Text('TN', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'OLED', child: Text('OLED', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo_panel'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo_panel'] = val),
                   ),
                 ),
               ],
@@ -3252,92 +3513,264 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
         );
 
       case 'teclado':
+        final List<String> conectividadesTeclado = [
+          'USB Alámbrico',
+          'Inalámbrico 2.4GHz (Dongle USB)',
+          'Bluetooth',
+          'Bluetooth Multi-Dispositivo',
+        ];
+        final List<String> seleccionadasTeclado = (_specsDinamicas['conectividad'] ?? '')
+            .toString()
+            .split(', ')
+            .where((s) => s.isNotEmpty)
+            .toList();
+
+        final String? tipoTecladoSel = _specsDinamicas['tipo'];
+        final bool esSwitchable = tipoTecladoSel == 'Mecánico' ||
+            tipoTecladoSel == 'Óptico' ||
+            tipoTecladoSel == 'Magnético (Efecto Hall)' ||
+            tipoTecladoSel == 'Semimecánico';
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Tipo', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Tipo de Teclado',
+                    value: _specsDinamicas['tipo'],
                     items: const [
-                      DropdownMenuItem(value: 'Mecánico', child: Text('Mecánico')),
-                      DropdownMenuItem(value: 'Membrana', child: Text('Membrana')),
+                      DropdownMenuItem(value: 'Mecánico', child: Text('Mecánico', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Membrana', child: Text('Membrana', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Óptico', child: Text('Óptico', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Magnético (Efecto Hall)', child: Text('Magnético (Efecto Hall / Rapid Trigger)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Semimecánico', child: Text('Semimecánico (Mecha-Membrane)', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['tipo'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['tipo'] = val),
                   ),
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Conectividad', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'Inalámbrico', child: Text('Inalámbrico')),
-                      DropdownMenuItem(value: 'Alámbrico', child: Text('Alámbrico')),
-                    ],
-                    onChanged: (val) => _specsDinamicas['conectividad'] = val,
+                if (esSwitchable) ...[
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _buildCustomDropdown<String>(
+                      labelText: 'Color / Tipo de Switches',
+                      value: _specsDinamicas['tipo_switch_color'],
+                      items: const [
+                        DropdownMenuItem(value: 'Blue (Azul - Clicki)', child: Text('🔵 Blue (Azul - Clicki)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Red (Rojo - Lineal)', child: Text('🔴 Red (Rojo - Lineal)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Brown (Marrón - Táctil)', child: Text('🟤 Brown (Marrón - Táctil)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Yellow (Amarillo - Rápido)', child: Text('🟡 Yellow (Amarillo - Rápido)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'White (Blanco - Clicki Rápido)', child: Text('⚪ White (Blanco - Clicki Rápido)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Purple (Púrpura - Óptico Clicki)', child: Text('🟣 Purple (Púrpura - Óptico Clicki)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Green (Verde - Táctil Clicki)', child: Text('🟢 Green (Verde - Táctil Clicki)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Black (Negro - Lineal Pesado)', child: Text('⚫ Black (Negro - Lineal Pesado)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Magnético / Hall Effect', child: Text('🧲 Magnético / Hall Effect (Rapid Trigger)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Custom / Otro Switch', child: Text('Custom / Otro Switch', style: TextStyle(color: Colors.white))),
+                      ],
+                      onChanged: (val) => setState(() => _specsDinamicas['tipo_switch_color'] = val),
+                    ),
                   ),
-                ),
+                ],
               ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Conectividad (Seleccione una o más opciones):',
+              style: TextStyle(color: Color(0xFF3AD8FF), fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: conectividadesTeclado.map((opcion) {
+                final bool estaSeleccionado = seleccionadasTeclado.contains(opcion);
+                return FilterChip(
+                  selected: estaSeleccionado,
+                  label: Text(opcion),
+                  labelStyle: TextStyle(
+                    color: estaSeleccionado ? const Color(0xFF050B14) : Colors.white,
+                    fontWeight: estaSeleccionado ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                  selectedColor: const Color(0xFF3AD8FF),
+                  backgroundColor: const Color(0xFF0E1726),
+                  checkmarkColor: const Color(0xFF050B14),
+                  side: BorderSide(
+                    color: estaSeleccionado ? const Color(0xFF3AD8FF) : Colors.white24,
+                  ),
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!seleccionadasTeclado.contains(opcion)) seleccionadasTeclado.add(opcion);
+                      } else {
+                        seleccionadasTeclado.remove(opcion);
+                      }
+                      _specsDinamicas['conectividad'] = seleccionadasTeclado.isNotEmpty ? seleccionadasTeclado.join(', ') : null;
+                    });
+                  },
+                );
+              }).toList(),
             ),
           ],
         );
 
       case 'mouse':
+        final List<String> conectividadesMouse = [
+          'USB Alámbrico',
+          'Inalámbrico 2.4GHz (Dongle USB)',
+          'Bluetooth',
+          'Bluetooth Multi-Dispositivo',
+        ];
+        final List<String> seleccionadasMouse = (_specsDinamicas['conectividad'] ?? '')
+            .toString()
+            .split(', ')
+            .where((s) => s.isNotEmpty)
+            .toList();
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
               children: [
                 Expanded(
                   child: TextFormField(
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: 'DPI Máximo', border: OutlineInputBorder()),
+                    decoration: const InputDecoration(labelText: 'DPI Máximo (ej: 26000)', border: OutlineInputBorder()),
                     onChanged: (val) => _specsDinamicas['dpi_maximo'] = int.tryParse(val) ?? 0,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Conectividad', border: OutlineInputBorder()),
+                  child: _buildCustomDropdown<String>(
+                    labelText: 'Modelo / Tipo de Sensor',
+                    value: _specsDinamicas['modelo_sensor'],
                     items: const [
-                      DropdownMenuItem(value: 'Inalámbrico', child: Text('Inalámbrico')),
-                      DropdownMenuItem(value: 'Alámbrico', child: Text('Alámbrico')),
+                      DropdownMenuItem(value: 'PAW 3395 (PixArt 26K DPI)', child: Text('PAW 3395 (PixArt 26K DPI)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PAW 3370 (PixArt 19K DPI)', child: Text('PAW 3370 (PixArt 19K DPI)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HERO 25K (Logitech)', child: Text('HERO 25K (Logitech)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'HERO 16K (Logitech)', child: Text('HERO 16K (Logitech)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Focus Pro 30K (Razer)', child: Text('Focus Pro 30K (Razer)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Focus+ 20K (Razer)', child: Text('Focus+ 20K (Razer)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PMW 3389 / 3360 (PixArt High-End)', child: Text('PMW 3389 / 3360 (PixArt High-End)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'PAW 3311 / 3327 (PixArt Mid-Range)', child: Text('PAW 3311 / 3327 (PixArt Mid-Range)', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Sensor Óptico Genérico', child: Text('Sensor Óptico Genérico', style: TextStyle(color: Colors.white))),
+                      DropdownMenuItem(value: 'Sensor Láser', child: Text('Sensor Láser', style: TextStyle(color: Colors.white))),
                     ],
-                    onChanged: (val) => _specsDinamicas['conectividad'] = val,
+                    onChanged: (val) => setState(() => _specsDinamicas['modelo_sensor'] = val),
                   ),
                 ),
               ],
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Conectividad (Seleccione una o más opciones):',
+              style: TextStyle(color: Color(0xFF3AD8FF), fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: conectividadesMouse.map((opcion) {
+                final bool estaSeleccionado = seleccionadasMouse.contains(opcion);
+                return FilterChip(
+                  selected: estaSeleccionado,
+                  label: Text(opcion),
+                  labelStyle: TextStyle(
+                    color: estaSeleccionado ? const Color(0xFF050B14) : Colors.white,
+                    fontWeight: estaSeleccionado ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                  selectedColor: const Color(0xFF3AD8FF),
+                  backgroundColor: const Color(0xFF0E1726),
+                  checkmarkColor: const Color(0xFF050B14),
+                  side: BorderSide(
+                    color: estaSeleccionado ? const Color(0xFF3AD8FF) : Colors.white24,
+                  ),
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!seleccionadasMouse.contains(opcion)) seleccionadasMouse.add(opcion);
+                      } else {
+                        seleccionadasMouse.remove(opcion);
+                      }
+                      _specsDinamicas['conectividad'] = seleccionadasMouse.isNotEmpty ? seleccionadasMouse.join(', ') : null;
+                    });
+                  },
+                );
+              }).toList(),
             ),
           ],
         );
 
       case 'auriculares_altavoces':
+        final List<String> conectividadesAudio = [
+          'Bluetooth',
+          'Inalámbrico 2.4GHz (Dongle USB/USB-C)',
+          'Jack 3.5mm (Combo TRRS)',
+          'Doble Jack 3.5mm (Audio + Mic)',
+          'USB-A Digital',
+          'USB-C Digital',
+          'Jack 6.35mm (1/4" Pro)',
+          'Cable Óptico / SPDIF',
+        ];
+        final List<String> seleccionadasAudio = (_specsDinamicas['conectividad'] ?? '')
+            .toString()
+            .split(', ')
+            .where((s) => s.isNotEmpty)
+            .toList();
+
         return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Formato', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'Auriculares (Headset)', child: Text('Auriculares (Headset)')),
-                      DropdownMenuItem(value: 'Altavoces (Speakers)', child: Text('Altavoces (Speakers)')),
-                    ],
-                    onChanged: (val) => _specsDinamicas['formato'] = val,
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: 'Conectividad', border: OutlineInputBorder()),
-                    items: const [
-                      DropdownMenuItem(value: 'Bluetooth', child: Text('Bluetooth')),
-                      DropdownMenuItem(value: 'USB', child: Text('USB')),
-                      DropdownMenuItem(value: 'Jack 3.5mm', child: Text('Jack 3.5mm')),
-                    ],
-                    onChanged: (val) => _specsDinamicas['conectividad'] = val,
-                  ),
-                ),
+            _buildCustomDropdown<String>(
+              labelText: 'Formato de Audio',
+              value: _specsDinamicas['formato'],
+              items: const [
+                DropdownMenuItem(value: 'Auriculares (Headset/Over-Ear)', child: Text('Auriculares (Headset / Over-Ear)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Audífonos In-Ear (TWS / IEM)', child: Text('Audífonos In-Ear (TWS / IEM)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Altavoces (Speakers 2.0 / 2.1)', child: Text('Altavoces (Speakers 2.0 / 2.1)', style: TextStyle(color: Colors.white))),
+                DropdownMenuItem(value: 'Barra de Sonido (Soundbar)', child: Text('Barra de Sonido (Soundbar)', style: TextStyle(color: Colors.white))),
               ],
+              onChanged: (val) => setState(() => _specsDinamicas['formato'] = val),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Conectividad (Seleccione una o más opciones):',
+              style: TextStyle(color: Color(0xFF3AD8FF), fontSize: 12, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: conectividadesAudio.map((opcion) {
+                final bool estaSeleccionado = seleccionadasAudio.contains(opcion);
+                return FilterChip(
+                  selected: estaSeleccionado,
+                  label: Text(opcion),
+                  labelStyle: TextStyle(
+                    color: estaSeleccionado ? const Color(0xFF050B14) : Colors.white,
+                    fontWeight: estaSeleccionado ? FontWeight.bold : FontWeight.normal,
+                    fontSize: 12,
+                  ),
+                  selectedColor: const Color(0xFF3AD8FF),
+                  backgroundColor: const Color(0xFF0E1726),
+                  checkmarkColor: const Color(0xFF050B14),
+                  side: BorderSide(
+                    color: estaSeleccionado ? const Color(0xFF3AD8FF) : Colors.white24,
+                  ),
+                  onSelected: (bool selected) {
+                    setState(() {
+                      if (selected) {
+                        if (!seleccionadasAudio.contains(opcion)) seleccionadasAudio.add(opcion);
+                      } else {
+                        seleccionadasAudio.remove(opcion);
+                      }
+                      _specsDinamicas['conectividad'] = seleccionadasAudio.isNotEmpty ? seleccionadasAudio.join(', ') : null;
+                    });
+                  },
+                );
+              }).toList(),
             ),
           ],
         );

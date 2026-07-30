@@ -53,4 +53,23 @@ class AuditoriaService {
   static Stream<QuerySnapshot> obtenerHistorialStream() {
     return _inventarioRef.snapshots();
   }
+
+  /// Limpia la memoria caché local de auditoría
+  static void limpiarRegistrosLocales() {
+    _registrosLocales.clear();
+  }
+
+  /// Elimina por completo todos los documentos de la colección 'inventario' en Firestore
+  /// (componentes, ventas, auditoría y posiciones) y restablece la memoria local.
+  static Future<int> limpiarBaseDeDatosCompleta() async {
+    final snap = await _inventarioRef.get();
+    int count = 0;
+    for (final doc in snap.docs) {
+      await doc.reference.delete();
+      count++;
+    }
+    limpiarRegistrosLocales();
+    return count;
+  }
 }
+

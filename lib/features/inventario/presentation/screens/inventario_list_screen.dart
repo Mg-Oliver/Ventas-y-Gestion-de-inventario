@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../data/models/producto_model.dart';
 import '../../data/services/auditoria_service.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/compatibilidad_service.dart';
 
 class InventarioListScreen extends StatefulWidget {
   final String? categoriaFiltro;
@@ -150,6 +151,9 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
     if (est == 'En Uso') {
       col = const Color(0xFF007AFF);
       ico = Icons.devices;
+    } else if (est == 'Por Probar') {
+      col = Colors.amberAccent;
+      ico = Icons.help_outline;
     } else if (est == 'En Mantenimiento') {
       col = Colors.orangeAccent;
       ico = Icons.build;
@@ -260,6 +264,7 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
                       items: const [
                         DropdownMenuItem(value: 'Disponible', child: Text('🟢 Disponible (Stock)', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(value: 'En Uso', child: Text('🔵 En Uso (Asignado)', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem(value: 'Por Probar', child: Text('🟡 Por Probar (Sin Verificar)', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(value: 'En Mantenimiento', child: Text('🟠 En Mantenimiento', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(value: 'Defectuoso', child: Text('🔴 Defectuoso (Scrap)', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem(value: 'Vendido', child: Text('🟣 Vendido (Completado)', style: TextStyle(color: Colors.white))),
@@ -948,6 +953,11 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
                       final claveLimpia = entry.key.replaceAll('_', ' ').toUpperCase();
                       return _buildItemLista(Icons.tune, claveLimpia, '${entry.value}');
                     }),
+
+                  const Divider(color: Color(0xFF007AFF), height: 24),
+
+                  // SECCIÓN 3: Compatibilidades Detectadas en Stock
+                  _buildSeccionCompatibilidadesStock(prod),
                 ],
               ),
             ),
@@ -983,6 +993,103 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildSeccionCompatibilidadesStock(ProductoModel prod) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance.collection('inventario').snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const SizedBox.shrink();
+
+        final docs = snapshot.data!.docs;
+        final todosLosProds = docs.map((doc) {
+          return ProductoModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
+        }).toList();
+
+        final compatibles = CompatibilidadService.obtenerCompatiblesEnInventario(prod, todosLosProds);
+
+        return Container(
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            color: const Color(0xFF050B14),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFF3AD8FF).withValues(alpha: 0.3)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.extension, color: Color(0xFF3AD8FF), size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '🧩 COMPATIBILIDADES EN STOCK (${compatibles.length})',
+                    style: const TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.bold, fontSize: 13, letterSpacing: 1.1),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              if (compatibles.isEmpty)
+                const Text(
+                  'No se detectaron piezas compatibles en el inventario actual.',
+                  style: TextStyle(color: Colors.grey, fontSize: 12),
+                )
+              else
+                Column(
+                  children: compatibles.take(6).map((item) {
+                    final marca = item.atributosAdministrativos['marca'] ?? '';
+                    final modelo = item.atributosAdministrativos['modelo'] ?? '';
+                    final cat = item.categoria.replaceAll('_', ' ').toUpperCase();
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 6),
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0E1726),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: Colors.white12),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '$marca $modelo',
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  cat,
+                                  style: const TextStyle(color: Color(0xFF3AD8FF), fontSize: 10),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: Colors.greenAccent.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: Colors.greenAccent.withValues(alpha: 0.5)),
+                            ),
+                            child: const Text(
+                              '✓ Compatible',
+                              style: TextStyle(color: Colors.greenAccent, fontSize: 10, fontWeight: FontWeight.bold),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+            ],
+          ),
+        );
+      },
     );
   }
 
@@ -1086,6 +1193,7 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
                         DropdownMenuItem<String?>(value: null, child: Text('Todos los Estados', style: TextStyle(color: Colors.grey))),
                         DropdownMenuItem<String?>(value: 'Disponible', child: Text('🟢 Disponible', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem<String?>(value: 'En Uso', child: Text('🔵 En Uso', style: TextStyle(color: Colors.white))),
+                        DropdownMenuItem<String?>(value: 'Por Probar', child: Text('🟡 Por Probar', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem<String?>(value: 'En Mantenimiento', child: Text('🟠 En Mantenimiento', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem<String?>(value: 'Defectuoso', child: Text('🔴 Defectuoso', style: TextStyle(color: Colors.white))),
                         DropdownMenuItem<String?>(value: 'Vendido', child: Text('🟣 Vendido', style: TextStyle(color: Colors.white))),
@@ -1279,11 +1387,17 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
 
           final productosFiltrados = todosLosProductos.where((prod) {
             final admin = prod.atributosAdministrativos;
+            final estadoComp = (admin['estado_componente'] ?? 'Disponible').toString();
+            if (prod.grupo.toLowerCase() == 'eliminado' ||
+                estadoComp.toLowerCase() == 'eliminado' ||
+                prod.categoria.toLowerCase() == 'eliminado') {
+              return false;
+            }
+
             final queryText = _textoBusqueda.toLowerCase();
             final marcaComp = (admin['marca'] ?? '').toString();
             final modeloComp = (admin['modelo'] ?? '').toString();
             final idActivo = (admin['id_activo'] ?? '').toString();
-            final estadoComp = (admin['estado_componente'] ?? 'Disponible').toString();
 
             // Filtro por texto
             final cumpleQuery = queryText.isEmpty ||

@@ -15,6 +15,9 @@ class ProductoModel {
     required this.especificacionesTecnicas,
   });
 
+  double get precioCompra => double.tryParse((atributosAdministrativos['precio_adquisicion'] ?? '0').toString()) ?? 0.0;
+  double get precioVenta => double.tryParse((atributosAdministrativos['precio_venta'] ?? '0').toString()) ?? 0.0;
+
   /// Transforma este modelo a un Mapa listo para subirse a Cloud Firestore
   Map<String, dynamic> toMap() {
     return {

@@ -93,11 +93,12 @@ class _HistorialAuditoriaScreenState extends State<HistorialAuditoriaScreen> {
                   if (snapshot.hasData && snapshot.data != null) {
                     for (final doc in snapshot.data!.docs) {
                       final rawData = doc.data() as Map<String, dynamic>;
+                      if (rawData['grupo'] == 'eliminado' || rawData['categoria'] == 'eliminado') continue;
                       final admin = rawData['atributosAdministrativos'] as Map<String, dynamic>? ?? {};
                       
                       final esAuditoria = rawData['grupo'] == 'auditoria_movimientos' ||
-                          rawData.containsKey('tipo_accion') ||
-                          admin.containsKey('tipo_accion');
+                          (rawData.containsKey('tipo_accion') && rawData['tipo_accion'] != 'ELIMINADO') ||
+                          (admin.containsKey('tipo_accion') && admin['tipo_accion'] != 'ELIMINADO');
 
                       if (esAuditoria) {
                         registros.add({

@@ -3,12 +3,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_hooks/flutter_hooks.dart';
 import '../../data/models/producto_model.dart';
 import '../../data/services/auth_service.dart';
+import '../../data/services/auditoria_service.dart';
 import 'agregar_producto_screen.dart';
 import 'inventario_list_screen.dart';
 import 'historial_auditoria_screen.dart';
 import 'registro_ventas_screen.dart';
 import 'tabla_posiciones_screen.dart';
 import 'login_screen.dart';
+import 'pc_builder_screen.dart';
 
 class DashboardScreen extends HookWidget {
   const DashboardScreen({super.key});
@@ -291,6 +293,175 @@ class DashboardScreen extends HookWidget {
     );
   }
 
+  void _mostrarDialogoLimpiezaBaseDatos(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0E1726),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Colors.redAccent, width: 1.5),
+          ),
+          title: Row(
+            children: const [
+              Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 28),
+              SizedBox(width: 10),
+              Text(
+                'Limpiar Base de Datos',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: const [
+              Text(
+                '¿Estás seguro de que deseas vaciar por completo la base de datos?',
+                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+              SizedBox(height: 10),
+              Text(
+                'Esta acción eliminará:\n'
+                '• Todos los componentes añadidos al inventario\n'
+                '• El registro completo de ventas\n'
+                '• La lista e historial de auditoría\n'
+                '• La tabla de posiciones y podio de ventas',
+                style: TextStyle(color: Colors.grey, fontSize: 13, height: 1.4),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              icon: const Icon(Icons.delete_forever),
+              label: const Text('Sí, Limpiar Todo', style: TextStyle(fontWeight: FontWeight.bold)),
+              onPressed: () async {
+                Navigator.pop(context);
+                try {
+                  final cant = await AuditoriaService.limpiarBaseDeDatosCompleta();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('🧹 Base de datos limpiada con éxito ($cant registros vaciados).'),
+                        backgroundColor: Colors.green.shade800,
+                      ),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('❌ Error al limpiar base de datos: $e'),
+                        backgroundColor: Colors.redAccent,
+                      ),
+                    );
+                  }
+                }
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _mostrarDialogoConfiguracion(BuildContext context) {
+    final usuario = AuthService.usuarioActual;
+    final bool esMiguel = usuario.nombre.toLowerCase().contains('miguel');
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) {
+        return AlertDialog(
+          backgroundColor: const Color(0xFF0E1726),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: const BorderSide(color: Color(0xFF3AD8FF), width: 1.5),
+          ),
+          title: Row(
+            children: const [
+              Icon(Icons.settings, color: Color(0xFF3AD8FF)),
+              SizedBox(width: 10),
+              Text(
+                '⚙️ Configuración del Sistema',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Usuario activo: ${usuario.nombre}',
+                style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF050B14),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white10),
+                ),
+                child: const Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(Icons.info_outline, color: Color(0xFF3AD8FF), size: 16),
+                        SizedBox(width: 8),
+                        Text('Información de Plataforma', style: TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.bold, fontSize: 12)),
+                      ],
+                    ),
+                    SizedBox(height: 6),
+                    Text('• Versión: OvniCore Suite 1.0.0', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                    Text('• Base de Datos: Google Cloud Firestore', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                    Text('• Estado: Sincronizado en Tiempo Real', style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold)),
+                  ],
+                ),
+              ),
+              if (esMiguel) ...[
+                const SizedBox(height: 16),
+                const Text(
+                  '🛠️ Herramientas Avanzadas:',
+                  style: TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.bold, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                ListTile(
+                  contentPadding: EdgeInsets.zero,
+                  leading: const Icon(Icons.cleaning_services, color: Colors.redAccent),
+                  title: const Text('Limpiar Base de Datos', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 14)),
+                  subtitle: const Text('Restablecer registros y componentes de la base de datos', style: TextStyle(color: Colors.grey, fontSize: 11)),
+                  onTap: () {
+                    Navigator.pop(dialogContext);
+                    _mostrarDialogoLimpiezaBaseDatos(context);
+                  },
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Hooks
@@ -313,6 +484,14 @@ class DashboardScreen extends HookWidget {
         centerTitle: true,
         backgroundColor: const Color(0xFF0E1726),
         elevation: 0,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings, color: Color(0xFF3AD8FF)),
+            tooltip: 'Configuración',
+            onPressed: () => _mostrarDialogoConfiguracion(context),
+          ),
+          const SizedBox(width: 12),
+        ],
       ),
       body: Container(
         decoration: const BoxDecoration(color: Color(0xFF0E1726)),
@@ -360,101 +539,128 @@ class DashboardScreen extends HookWidget {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 32),
-          Image.asset('assets/img/icon_ovnicore.png', width: 80, height: 80),
-          const SizedBox(height: 16),
+          const SizedBox(height: 20),
+          Image.asset('assets/img/icon_ovnicore.png', width: 64, height: 64),
+          const SizedBox(height: 10),
           const Text(
             'OvniCore\nCentro de Datos',
             textAlign: TextAlign.center,
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: Colors.white,
             ),
           ),
-          const SizedBox(height: 32),
-          // 1. Buscador de Inventario
-          _buildTab(
-            title: 'Buscador de Inventario',
-            icon: Icons.search,
-            isActive: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) =>
-                      const InventarioListScreen(categoriaFiltro: null),
-                ),
-              );
-            },
+          const SizedBox(height: 16),
+
+          // Scrollable navigation tabs list
+          Expanded(
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  // 1. Buscador de Inventario
+                  _buildTab(
+                    title: 'Buscador de Inventario',
+                    icon: Icons.search,
+                    isActive: false,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const InventarioListScreen(categoriaFiltro: null),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 2. Componentes Internos
+                  _buildTab(
+                    title: 'Componentes Internos',
+                    icon: Icons.developer_board,
+                    isActive: panelActivo.value == 0,
+                    onTap: () => panelActivo.value = 0,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 3. Componentes Externos
+                  _buildTab(
+                    title: 'Componentes Externos',
+                    icon: Icons.mouse,
+                    isActive: panelActivo.value == 1,
+                    onTap: () => panelActivo.value = 1,
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 3.5 Armador de PC (PCPartPicker)
+                  _buildTab(
+                    title: 'Armador de PC',
+                    icon: Icons.build_circle,
+                    isActive: false,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const PcBuilderScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 4. Registro de Ventas
+                  _buildTab(
+                    title: 'Registro de Ventas',
+                    icon: Icons.monetization_on,
+                    isActive: false,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const RegistroVentasScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 5. Tabla de Posiciones
+                  _buildTab(
+                    title: 'Tabla de Posiciones',
+                    icon: Icons.emoji_events,
+                    isActive: false,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const TablaPosicionesScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 8),
+
+                  // 6. Historial y Auditoría
+                  _buildTab(
+                    title: 'Historial y Auditoría',
+                    icon: Icons.history,
+                    isActive: false,
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const HistorialAuditoriaScreen(),
+                        ),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 8),
 
-          // 2. Componentes Internos
-          _buildTab(
-            title: 'Componentes Internos',
-            icon: Icons.developer_board,
-            isActive: panelActivo.value == 0,
-            onTap: () => panelActivo.value = 0,
-          ),
-          const SizedBox(height: 8),
-
-          // 3. Componentes Externos
-          _buildTab(
-            title: 'Componentes Externos',
-            icon: Icons.mouse,
-            isActive: panelActivo.value == 1,
-            onTap: () => panelActivo.value = 1,
-          ),
-          const SizedBox(height: 8),
-
-          // 4. Registro de Ventas
-          _buildTab(
-            title: 'Registro de Ventas',
-            icon: Icons.monetization_on,
-            isActive: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const RegistroVentasScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-
-          // 5. Tabla de Posiciones
-          _buildTab(
-            title: 'Tabla de Posiciones',
-            icon: Icons.emoji_events,
-            isActive: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const TablaPosicionesScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-
-          // 6. Historial y Auditoría
-          _buildTab(
-            title: 'Historial y Auditoría',
-            icon: Icons.history,
-            isActive: false,
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const HistorialAuditoriaScreen(),
-                ),
-              );
-            },
-          ),
-          const Spacer(),
           // Active User Profile Card
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16.0),
@@ -513,7 +719,11 @@ class DashboardScreen extends HookWidget {
                               ],
                             ),
                           ),
-                          const Icon(Icons.settings, color: Color(0xFF3AD8FF), size: 16),
+                          IconButton(
+                            icon: const Icon(Icons.settings, color: Color(0xFF3AD8FF), size: 18),
+                            tooltip: 'Configuración del Sistema',
+                            onPressed: () => _mostrarDialogoConfiguracion(context),
+                          ),
                         ],
                       ),
                     ),
@@ -560,9 +770,6 @@ class DashboardScreen extends HookWidget {
             ),
           ),
           const SizedBox(height: 16),
-          // KPIs section at the bottom of the left panel
-          _buildKpisSection(),
-          const SizedBox(height: 24),
         ],
       ),
     );
@@ -623,37 +830,48 @@ class DashboardScreen extends HookWidget {
 
         if (snapshot.hasData && snapshot.data != null) {
           final docs = snapshot.data!.docs;
-          totalActivos = docs.length;
-          final todosLosProductos = docs.map((doc) {
+          final productosValidos = docs.map((doc) {
             return ProductoModel.fromMap(
               doc.data() as Map<String, dynamic>,
               doc.id,
             );
+          }).where((p) {
+            final estado = (p.atributosAdministrativos['estado_componente'] ?? '').toString().toLowerCase();
+            final grupo = p.grupo.toLowerCase();
+            final cat = p.categoria.toLowerCase();
+            return grupo != 'eliminado' &&
+                grupo != 'auditoria_movimientos' &&
+                cat != 'eliminado' &&
+                estado != 'eliminado' &&
+                estado != 'vendido';
           }).toList();
-          alertasCriticas = todosLosProductos
-              .where((p) => p.atributosAdministrativos['id_activo'] == '001')
+
+          totalActivos = productosValidos.length;
+          alertasCriticas = productosValidos
+              .where((p) => (p.atributosAdministrativos['id_activo'] ?? '') == '001')
               .length;
         }
 
-        return Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-          child: Column(
-            children: [
-              _buildMiniKpi(
+        return Row(
+          children: [
+            Expanded(
+              child: _buildMiniKpi(
                 'TOTAL ACTIVOS',
                 '$totalActivos',
-                Colors.blueAccent,
+                const Color(0xFF3AD8FF),
                 Icons.inventory_2,
               ),
-              const SizedBox(height: 8),
-              _buildMiniKpi(
-                'ALERTAS CRÍTICAS',
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: _buildMiniKpi(
+                'ALERTAS CRÍTICAS / ERRORES',
                 '$alertasCriticas',
                 Colors.redAccent,
                 Icons.gpp_maybe,
               ),
-            ],
-          ),
+            ),
+          ],
         );
       },
     );
@@ -713,6 +931,9 @@ class DashboardScreen extends HookWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // SECCIÓN SUPERIOR DE KPIS (TOTAL DE ACTIVOS Y ERRORES)
+          _buildKpisSection(),
+          const SizedBox(height: 24),
           Text(
             panelActivo == 0 ? 'Componentes Internos' : 'Periféricos Externos',
             style: const TextStyle(
