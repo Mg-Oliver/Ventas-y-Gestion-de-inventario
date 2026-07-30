@@ -13,6 +13,284 @@ import 'login_screen.dart';
 class DashboardScreen extends HookWidget {
   const DashboardScreen({super.key});
 
+  void _mostrarDialogoPerfil(BuildContext context) async {
+    final usuario = AuthService.usuarioActual;
+    final String initialDesc = await AuthService.obtenerDescripcion(usuario.nombre) ?? '';
+    if (!context.mounted) return;
+
+    final descController = TextEditingController(text: initialDesc);
+    final passController = TextEditingController();
+    final confirmPassController = TextEditingController();
+    bool mostrarPass = false;
+    String? errorMsg;
+    String? successMsg;
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0E1726),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: const Color(0xFF3AD8FF).withValues(alpha: 0.5)),
+              ),
+              title: Row(
+                children: [
+                  CircleAvatar(
+                    backgroundColor: const Color(0xFF3AD8FF).withValues(alpha: 0.2),
+                    child: const Icon(Icons.person, color: Color(0xFF3AD8FF)),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Perfil: ${usuario.nombre}',
+                          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
+                        const Text(
+                          'Personaliza tu descripción y contraseña de acceso',
+                          style: TextStyle(color: Colors.grey, fontSize: 12),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+              content: SizedBox(
+                width: 440,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(color: Colors.white12),
+                      const SizedBox(height: 12),
+                      
+                      // SECCIÓN DESCRIPCIÓN
+                      Row(
+                        children: const [
+                          Icon(Icons.badge_outlined, color: Color(0xFF3AD8FF), size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Descripción o Cargo (Opcional)',
+                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Agrega una descripción para mostrar en tu tarjeta (ej: Especialista de Hardware, Administrador, etc.):',
+                        style: TextStyle(color: Colors.grey, fontSize: 11),
+                      ),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: descController,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: 'Ej: Especialista de Sistemas e Inventario',
+                          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 13),
+                          prefixIcon: const Icon(Icons.description, color: Color(0xFF3AD8FF)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF3AD8FF)),
+                          ),
+                        ),
+                      ),
+
+                      const SizedBox(height: 20),
+                      const Divider(color: Colors.white12),
+                      const SizedBox(height: 12),
+
+                      // SECCIÓN CONTRASEÑA
+                      Row(
+                        children: const [
+                          Icon(Icons.shield_outlined, color: Color(0xFF3AD8FF), size: 20),
+                          SizedBox(width: 8),
+                          Text(
+                            'Contraseña de Acceso (Opcional)',
+                            style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      FutureBuilder<bool>(
+                        future: AuthService.tieneContrasena(usuario.nombre),
+                        builder: (context, snapshot) {
+                          final tienePass = snapshot.data ?? false;
+                          return Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: tienePass ? Colors.green.withValues(alpha: 0.15) : Colors.orange.withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: tienePass ? Colors.greenAccent : Colors.orangeAccent,
+                                width: 0.8,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  tienePass ? Icons.lock : Icons.lock_open,
+                                  size: 14,
+                                  color: tienePass ? Colors.greenAccent : Colors.orangeAccent,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  tienePass ? 'Perfil protegido con contraseña' : 'Sin contraseña (acceso directo)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.bold,
+                                    color: tienePass ? Colors.greenAccent : Colors.orangeAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 12),
+                      if (errorMsg != null)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.red.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(errorMsg!, style: const TextStyle(color: Colors.redAccent, fontSize: 12)),
+                        ),
+                      if (successMsg != null)
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.green.withValues(alpha: 0.2),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(successMsg!, style: const TextStyle(color: Colors.greenAccent, fontSize: 12)),
+                        ),
+                      TextField(
+                        controller: passController,
+                        obscureText: !mostrarPass,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Nueva Contraseña',
+                          labelStyle: const TextStyle(color: Color(0xFF3AD8FF)),
+                          prefixIcon: const Icon(Icons.key, color: Color(0xFF3AD8FF)),
+                          suffixIcon: IconButton(
+                            icon: Icon(mostrarPass ? Icons.visibility_off : Icons.visibility, color: Colors.grey),
+                            onPressed: () => setModalState(() => mostrarPass = !mostrarPass),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF3AD8FF)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: confirmPassController,
+                        obscureText: !mostrarPass,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          labelText: 'Confirmar Contraseña',
+                          labelStyle: const TextStyle(color: Color(0xFF3AD8FF)),
+                          prefixIcon: const Icon(Icons.key_outlined, color: Color(0xFF3AD8FF)),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                          ),
+                          focusedBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFF3AD8FF)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              actions: [
+                FutureBuilder<bool>(
+                  future: AuthService.tieneContrasena(usuario.nombre),
+                  builder: (context, snapshot) {
+                    final tienePass = snapshot.data ?? false;
+                    if (!tienePass) return const SizedBox.shrink();
+                    return TextButton.icon(
+                      style: TextButton.styleFrom(foregroundColor: Colors.redAccent),
+                      icon: const Icon(Icons.delete_outline, size: 16),
+                      label: const Text('Quitar Contraseña', style: TextStyle(fontSize: 12)),
+                      onPressed: () async {
+                        await AuthService.eliminarContrasena(usuario.nombre);
+                        setModalState(() {
+                          passController.clear();
+                          confirmPassController.clear();
+                          errorMsg = null;
+                          successMsg = 'Contraseña eliminada correctamente';
+                        });
+                      },
+                    );
+                  },
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cerrar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3AD8FF),
+                    foregroundColor: const Color(0xFF050B14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    final p1 = passController.text.trim();
+                    final p2 = confirmPassController.text.trim();
+
+                    // Guardar Descripción
+                    await AuthService.guardarDescripcion(usuario.nombre, descController.text);
+
+                    // Guardar Contraseña si fue especificada
+                    if (p1.isNotEmpty) {
+                      if (p1 != p2) {
+                        setModalState(() {
+                          errorMsg = 'Las contraseñas no coinciden';
+                          successMsg = null;
+                        });
+                        return;
+                      }
+                      await AuthService.guardarContrasena(usuario.nombre, p1);
+                      passController.clear();
+                      confirmPassController.clear();
+                    }
+
+                    setModalState(() {
+                      errorMsg = null;
+                      successMsg = '¡Perfil actualizado con éxito!';
+                    });
+                  },
+                  child: const Text('Guardar Perfil', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     // Hooks
@@ -185,62 +463,97 @@ class DashboardScreen extends HookWidget {
               decoration: BoxDecoration(
                 color: const Color(0xFF050B14),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: const Color(0xFF007AFF).withValues(alpha: 0.3)),
+                border: Border.all(color: const Color(0xFF3AD8FF).withValues(alpha: 0.3)),
               ),
               child: Column(
                 children: [
+                  InkWell(
+                    onTap: () => _mostrarDialogoPerfil(context),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 16,
+                            backgroundColor: const Color(0xFF3AD8FF).withValues(alpha: 0.2),
+                            child: const Icon(
+                              Icons.person,
+                              size: 18,
+                              color: Color(0xFF3AD8FF),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  AuthService.usuarioActual.nombre,
+                                  style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
+                                ),
+                                FutureBuilder<String?>(
+                                  future: AuthService.obtenerDescripcion(AuthService.usuarioActual.nombre),
+                                  builder: (context, snapshot) {
+                                    final desc = snapshot.data;
+                                    if (desc == null || desc.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return Text(
+                                      desc,
+                                      style: const TextStyle(
+                                        color: Colors.grey,
+                                        fontSize: 10,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    );
+                                  },
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(Icons.settings, color: Color(0xFF3AD8FF), size: 16),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: (AuthService.usuarioActual.esAdmin ? const Color(0xFF3AD8FF) : const Color(0xFF007AFF)).withValues(alpha: 0.2),
-                        child: Icon(
-                          AuthService.usuarioActual.esAdmin ? Icons.admin_panel_settings : Icons.engineering,
-                          size: 16,
-                          color: AuthService.usuarioActual.esAdmin ? const Color(0xFF3AD8FF) : const Color(0xFF007AFF),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFF3AD8FF),
+                            side: BorderSide(color: const Color(0xFF3AD8FF).withValues(alpha: 0.5), width: 0.8),
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 28),
+                          ),
+                          icon: const Icon(Icons.lock_person, size: 12),
+                          label: const Text('Mi Perfil', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                          onPressed: () => _mostrarDialogoPerfil(context),
                         ),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 6),
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              AuthService.usuarioActual.nombre,
-                              style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold),
-                            ),
-                            Text(
-                              AuthService.usuarioActual.rol,
-                              style: TextStyle(
-                                color: AuthService.usuarioActual.esAdmin ? Colors.purpleAccent : const Color(0xFF3AD8FF),
-                                fontSize: 10,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                          ],
+                        child: OutlinedButton.icon(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.6), width: 0.8),
+                            padding: EdgeInsets.zero,
+                            minimumSize: const Size(0, 28),
+                          ),
+                          icon: const Icon(Icons.logout, size: 12),
+                          label: const Text('Cambiar', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            Navigator.pushReplacement(
+                              context,
+                              MaterialPageRoute(builder: (context) => const LoginScreen()),
+                            );
+                          },
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 8),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 28,
-                    child: OutlinedButton.icon(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.redAccent,
-                        side: BorderSide(color: Colors.redAccent.withValues(alpha: 0.6), width: 0.8),
-                        padding: EdgeInsets.zero,
-                      ),
-                      icon: const Icon(Icons.logout, size: 12),
-                      label: const Text('Cambiar Usuario', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        );
-                      },
-                    ),
                   ),
                 ],
               ),

@@ -62,55 +62,321 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
 
   String? _marcaSeleccionada;
   bool _isSearchingImage = false;
-  final List<String> _marcasPopulares = [
-    'AMD',
-    'Intel',
-    'ASUS',
-    'MSI',
-    'Gigabyte',
-    'Corsair',
-    'Kingston',
-    'Crucial',
-    'Samsung',
-    'Western Digital',
-    'Seagate',
-    'SanDisk',
-    'ADATA',
-    'XPG',
-    'G.Skill',
-    'TeamGroup',
-    'PNY',
-    'Zotac',
-    'Sapphire',
-    'PowerColor',
-    'XFX',
-    'ASRock',
-    'Cooler Master',
-    'Thermaltake',
-    'Noctua',
-    'be quiet!',
-    'Lian Li',
-    'NZXT',
-    'DeepCool',
-    'Phanteks',
-    'Fractal Design',
-    'Logitech',
-    'Razer',
-    'Redragon',
-    'HP',
-    'Dell',
-    'Lenovo',
-    'Acer',
-    'BenQ',
-    'ViewSonic',
-    'LG',
-    'Crucial',
-    'XPG / Adata',
-    'Zotac',
-    'PowerColor',
-    'Sapphire',
-    'Otra marca',
-  ];
+  List<String> _obtenerMarcasPorCategoria(String? categoria) {
+    switch (categoria) {
+      case 'procesador_cpu':
+        return [
+          'AMD',
+          'Intel',
+          'Qualcomm',
+          'Apple',
+          'MediaTek',
+          'ARM',
+          'Otra marca',
+        ];
+
+      case 'tarjeta_madre':
+        return [
+          'ASUS',
+          'MSI',
+          'Gigabyte',
+          'ASRock',
+          'NZXT',
+          'EVGA',
+          'Biostar',
+          'Huananzhi',
+          'Machinist',
+          'Maxsun',
+          'Jginyue',
+          'Onda',
+          'ColorFul',
+          'Otra marca',
+        ];
+
+      case 'memoria_ram':
+        return [
+          'Corsair',
+          'Kingston',
+          'Crucial',
+          'G.Skill',
+          'TeamGroup',
+          'ADATA',
+          'XPG',
+          'Samsung',
+          'HyperX',
+          'Patriot',
+          'Silicon Power',
+          'GeIL',
+          'Lexar',
+          'PNY',
+          'Kllisre',
+          'Jingsha',
+          'Netac',
+          'Juhor',
+          'Otra marca',
+        ];
+
+      case 'almacenamiento_ssd_hdd':
+        return [
+          'Samsung',
+          'Western Digital',
+          'Seagate',
+          'Crucial',
+          'Kingston',
+          'ADATA',
+          'XPG',
+          'SanDisk',
+          'Lexar',
+          'TeamGroup',
+          'PNY',
+          'Corsair',
+          'Sabrent',
+          'Toshiba',
+          'SK Hynix',
+          'Netac',
+          'Silicon Power',
+          'Hikvision',
+          'Fanxiang',
+          'KingSpec',
+          'Otra marca',
+        ];
+
+      case 'tarjeta_grafica':
+        return [
+          'ASUS',
+          'MSI',
+          'Gigabyte',
+          'Zotac',
+          'Sapphire',
+          'PowerColor',
+          'XFX',
+          'ASRock',
+          'PNY',
+          'EVGA',
+          'Palit',
+          'Gainward',
+          'Galax',
+          'KFA2',
+          'Inno3D',
+          'ColorFul',
+          'Manli',
+          'Maxsun',
+          'Sparkle',
+          'Peladn',
+          'Jingsha',
+          'Intel',
+          'AMD',
+          'NVIDIA',
+          'Otra marca',
+        ];
+
+      case 'fuente_poder':
+        return [
+          'Corsair',
+          'EVGA',
+          'Seasonic',
+          'Thermaltake',
+          'Cooler Master',
+          'be quiet!',
+          'DeepCool',
+          'MSI',
+          'Gigabyte',
+          'ASUS',
+          'XPG',
+          'Redragon',
+          'Cougar',
+          'Gamdias',
+          'AeroCool',
+          'AZZA',
+          'SilverStone',
+          'Super Flower',
+          'GameMax',
+          'Apevia',
+          'Otra marca',
+        ];
+
+      case 'gabinete_chasis':
+        return [
+          'Corsair',
+          'NZXT',
+          'Lian Li',
+          'Cooler Master',
+          'Thermaltake',
+          'DeepCool',
+          'Fractal Design',
+          'Phanteks',
+          'be quiet!',
+          'HYTE',
+          'Montech',
+          'MSI',
+          'ASUS',
+          'Antec',
+          'AeroCool',
+          'Redragon',
+          'GameMax',
+          'Cougar',
+          'Kolink',
+          'BitFenix',
+          'Otra marca',
+        ];
+
+      case 'disipador_cpu':
+        return [
+          'Noctua',
+          'DeepCool',
+          'Cooler Master',
+          'Thermalright',
+          'ARCTIC',
+          'be quiet!',
+          'Corsair',
+          'NZXT',
+          'Thermaltake',
+          'ID-COOLING',
+          'Valkyrie',
+          'Zalman',
+          'Cougar',
+          'Lian Li',
+          'Jonsbo',
+          'UpHere',
+          'Otra marca',
+        ];
+
+      case 'ventiladores_chasis':
+        return [
+          'Noctua',
+          'ARCTIC',
+          'Corsair',
+          'Lian Li',
+          'DeepCool',
+          'be quiet!',
+          'Thermalright',
+          'Cooler Master',
+          'Phanteks',
+          'Thermaltake',
+          'NZXT',
+          'Antec',
+          'InWin',
+          'ID-COOLING',
+          'UpHere',
+          'AeroCool',
+          'Otra marca',
+        ];
+
+      case 'monitor':
+        return [
+          'ASUS',
+          'LG',
+          'Samsung',
+          'AOC',
+          'BenQ',
+          'Acer',
+          'Dell',
+          'MSI',
+          'Gigabyte',
+          'ViewSonic',
+          'Philips',
+          'HP',
+          'Koorui',
+          'Xiaomi',
+          'Huawei',
+          'Ozone',
+          'Sceptre',
+          'TCL',
+          'Lenovo',
+          'Otra marca',
+        ];
+
+      case 'teclado':
+        return [
+          'Logitech',
+          'Razer',
+          'Redragon',
+          'Corsair',
+          'HyperX',
+          'Keychron',
+          'SteelSeries',
+          'Royal Kludge',
+          'VSG',
+          'Epomaker',
+          'Glorious',
+          'ASUS',
+          'Ducky',
+          'Terport',
+          'Motospeed',
+          'Akko',
+          'Cougar',
+          'Otra marca',
+        ];
+
+      case 'mouse':
+        return [
+          'Logitech',
+          'Razer',
+          'Redragon',
+          'Corsair',
+          'HyperX',
+          'SteelSeries',
+          'Glorious',
+          'VSG',
+          'ASUS',
+          'Pulsar',
+          'Lamzu',
+          'Ninjutso',
+          'VXE / VGN',
+          'Attack Shark',
+          'WLmouse',
+          'Finalmouse',
+          'Zowie',
+          'Delux',
+          'Otra marca',
+        ];
+
+      case 'auriculares_altavoces':
+        return [
+          'HyperX',
+          'Razer',
+          'Logitech',
+          'Corsair',
+          'Astro',
+          'SteelSeries',
+          'JBL',
+          'Sony',
+          'Sennheiser',
+          'Audio-Technica',
+          'Redragon',
+          'VSG',
+          'Fifine',
+          'Fantech',
+          'Edifier',
+          'Baseus',
+          'Bose',
+          'Kz',
+          'Tangzu',
+          'Otra marca',
+        ];
+
+      default:
+        return [
+          'AMD',
+          'Intel',
+          'ASUS',
+          'MSI',
+          'Gigabyte',
+          'Corsair',
+          'Kingston',
+          'Crucial',
+          'Samsung',
+          'Western Digital',
+          'Logitech',
+          'Razer',
+          'Redragon',
+          'HP',
+          'Dell',
+          'Lenovo',
+          'Otra marca',
+        ];
+    }
+  }
 
   final List<String> _opcionesImagenesApi = [];
   String? _imagenApiSeleccionada;
@@ -950,7 +1216,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
         componenteId: docRef.id,
         componenteNombre: '$marcaSanitizada $modeloSanitizado'.trim(),
         categoria: _categoriaSeleccionada!,
-        detalles: 'Registrado por ${AuthService.usuarioActual.nombre} (${AuthService.usuarioActual.rol})',
+        detalles: 'Registrado por ${AuthService.usuarioActual.nombre}',
       );
 
       if (mounted) {
@@ -1589,7 +1855,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                         child: _buildCustomDropdown<String>(
                           labelText: 'Marca del Ensamblador',
                           value: _marcaSeleccionada,
-                          items: _marcasPopulares.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.white)))).toList(),
+                          items: _obtenerMarcasPorCategoria('tarjeta_grafica').map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.white)))).toList(),
                           validator: (val) => val == null ? 'Seleccione marca' : null,
                           onChanged: (val) {
                             setState(() {
@@ -1709,7 +1975,7 @@ class _AgregarProductoScreenState extends State<AgregarProductoScreen> {
                         child: _buildCustomDropdown<String>(
                           labelText: 'Marca del Componente',
                           value: _marcaSeleccionada,
-                          items: _marcasPopulares.map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.white)))).toList(),
+                          items: _obtenerMarcasPorCategoria(_categoriaSeleccionada).map((m) => DropdownMenuItem(value: m, child: Text(m, style: const TextStyle(color: Colors.white)))).toList(),
                           validator: (val) => val == null ? 'Seleccione marca' : null,
                           onChanged: (val) {
                             setState(() {

@@ -10,6 +10,143 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
+  Future<void> _seleccionarUsuario(UsuarioModel usuario) async {
+    final tienePass = await AuthService.tieneContrasena(usuario.nombre);
+    if (!mounted) return;
+
+    if (tienePass) {
+      _mostrarDialogoContrasena(usuario);
+    } else {
+      AuthService.iniciarSesion(usuario);
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+      );
+    }
+  }
+
+  void _mostrarDialogoContrasena(UsuarioModel usuario) {
+    final passController = TextEditingController();
+    bool mostrarPass = false;
+    String? errorText;
+
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF0E1726),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: const Color(0xFF3AD8FF).withValues(alpha: 0.5)),
+              ),
+              title: Row(
+                children: [
+                  const Icon(Icons.lock_outline, color: Color(0xFF3AD8FF), size: 24),
+                  const SizedBox(width: 10),
+                  Text(
+                    'Acceso Protegido: ${usuario.nombre}',
+                    style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Este perfil requiere contraseña para ingresar.',
+                    style: TextStyle(color: Colors.grey, fontSize: 13),
+                  ),
+                  const SizedBox(height: 16),
+                  TextField(
+                    controller: passController,
+                    obscureText: !mostrarPass,
+                    autofocus: true,
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      labelText: 'Contraseña de Acceso',
+                      labelStyle: const TextStyle(color: Color(0xFF3AD8FF)),
+                      prefixIcon: const Icon(Icons.key, color: Color(0xFF3AD8FF)),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          mostrarPass ? Icons.visibility_off : Icons.visibility,
+                          color: Colors.grey,
+                        ),
+                        onPressed: () {
+                          setModalState(() {
+                            mostrarPass = !mostrarPass;
+                          });
+                        },
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.2)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(10),
+                        borderSide: const BorderSide(color: Color(0xFF3AD8FF)),
+                      ),
+                      errorText: errorText,
+                    ),
+                    onSubmitted: (_) async {
+                      final ok = await AuthService.verificarContrasena(usuario.nombre, passController.text);
+                      if (ok) {
+                        AuthService.iniciarSesion(usuario);
+                        if (!context.mounted) return;
+                        Navigator.pop(context);
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                        );
+                      } else {
+                        setModalState(() {
+                          errorText = 'Contraseña incorrecta';
+                        });
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF3AD8FF),
+                    foregroundColor: const Color(0xFF050B14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () async {
+                    final ok = await AuthService.verificarContrasena(usuario.nombre, passController.text);
+                    if (ok) {
+                      AuthService.iniciarSesion(usuario);
+                      if (!context.mounted) return;
+                      Navigator.pop(context);
+                      Navigator.pushReplacement(
+                        context,
+                        MaterialPageRoute(builder: (context) => const DashboardScreen()),
+                      );
+                    } else {
+                      setModalState(() {
+                        errorText = 'Contraseña incorrecta';
+                      });
+                    }
+                  },
+                  child: const Text('Ingresar', style: TextStyle(fontWeight: FontWeight.bold)),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -42,7 +179,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
                 const SizedBox(height: 40),
 
-                // TARJETAS DE USUARIO (MIGUEL, KEVIN, DIEGO, EDGARDO)
+                // TARJETAS DE USUARIOS (TODOS CON MISMO ROL Y ESTILO)
                 GridView.builder(
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
@@ -55,16 +192,9 @@ class _LoginScreenState extends State<LoginScreen> {
                   itemCount: AuthService.usuariosDisponibles.length,
                   itemBuilder: (context, index) {
                     final usuario = AuthService.usuariosDisponibles[index];
-                    final esAdmin = usuario.esAdmin;
 
                     return InkWell(
-                      onTap: () {
-                        AuthService.iniciarSesion(usuario);
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(builder: (context) => const DashboardScreen()),
-                        );
-                      },
+                      onTap: () => _seleccionarUsuario(usuario),
                       borderRadius: BorderRadius.circular(16),
                       child: Container(
                         padding: const EdgeInsets.all(18),
@@ -72,15 +202,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           color: const Color(0xFF0E1726),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: esAdmin
-                                ? const Color(0xFF3AD8FF)
-                                : const Color(0xFF007AFF).withValues(alpha: 0.4),
-                            width: esAdmin ? 2 : 1,
+                            color: const Color(0xFF3AD8FF).withValues(alpha: 0.4),
+                            width: 1.5,
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: (esAdmin ? const Color(0xFF3AD8FF) : const Color(0xFF007AFF))
-                                  .withValues(alpha: 0.15),
+                              color: const Color(0xFF3AD8FF).withValues(alpha: 0.1),
                               blurRadius: 10,
                               spreadRadius: 1,
                             ),
@@ -90,11 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
                           children: [
                             CircleAvatar(
                               radius: 28,
-                              backgroundColor: (esAdmin ? const Color(0xFF3AD8FF) : const Color(0xFF007AFF))
-                                  .withValues(alpha: 0.2),
-                              child: Icon(
-                                esAdmin ? Icons.admin_panel_settings : Icons.engineering,
-                                color: esAdmin ? const Color(0xFF3AD8FF) : const Color(0xFF007AFF),
+                              backgroundColor: const Color(0xFF3AD8FF).withValues(alpha: 0.15),
+                              child: const Icon(
+                                Icons.person,
+                                color: Color(0xFF3AD8FF),
                                 size: 30,
                               ),
                             ),
@@ -104,50 +230,46 @@ class _LoginScreenState extends State<LoginScreen> {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 mainAxisAlignment: MainAxisAlignment.center,
                                 children: [
-                                  Row(
-                                    children: [
-                                      Text(
-                                        usuario.nombre,
-                                        style: const TextStyle(
-                                          fontSize: 18,
-                                          fontWeight: FontWeight.bold,
-                                          color: Colors.white,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                                        decoration: BoxDecoration(
-                                          color: (esAdmin ? Colors.purpleAccent : const Color(0xFF007AFF))
-                                              .withValues(alpha: 0.2),
-                                          borderRadius: BorderRadius.circular(6),
-                                          border: Border.all(
-                                            color: (esAdmin ? Colors.purpleAccent : const Color(0xFF007AFF))
-                                                .withValues(alpha: 0.5),
-                                          ),
-                                        ),
-                                        child: Text(
-                                          usuario.rol.toUpperCase(),
-                                          style: TextStyle(
-                                            fontSize: 9,
-                                            fontWeight: FontWeight.bold,
-                                            color: esAdmin ? Colors.purpleAccent : const Color(0xFF3AD8FF),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                  const SizedBox(height: 4),
                                   Text(
-                                    usuario.cargo,
-                                    style: const TextStyle(color: Colors.grey, fontSize: 11),
-                                    maxLines: 2,
-                                    overflow: TextOverflow.ellipsis,
+                                    usuario.nombre,
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                  FutureBuilder<String?>(
+                                    future: AuthService.obtenerDescripcion(usuario.nombre),
+                                    builder: (context, snapshot) {
+                                      final desc = snapshot.data;
+                                      if (desc == null || desc.isEmpty) {
+                                        return const SizedBox.shrink();
+                                      }
+                                      return Padding(
+                                        padding: const EdgeInsets.only(top: 4.0),
+                                        child: Text(
+                                          desc,
+                                          style: const TextStyle(color: Colors.grey, fontSize: 11),
+                                          maxLines: 2,
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      );
+                                    },
                                   ),
                                 ],
                               ),
                             ),
-                            const Icon(Icons.arrow_forward_ios, color: Color(0xFF3AD8FF), size: 18),
+                            FutureBuilder<bool>(
+                              future: AuthService.tieneContrasena(usuario.nombre),
+                              builder: (context, snapshot) {
+                                final tienePass = snapshot.data ?? false;
+                                return Icon(
+                                  tienePass ? Icons.lock : Icons.arrow_forward_ios,
+                                  color: tienePass ? const Color(0xFF3AD8FF) : Colors.grey,
+                                  size: tienePass ? 20 : 18,
+                                );
+                              },
+                            ),
                           ],
                         ),
                       ),
@@ -162,3 +284,4 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
+

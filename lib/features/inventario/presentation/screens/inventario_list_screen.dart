@@ -1198,7 +1198,7 @@ class _InventarioListScreenState extends State<InventarioListScreen> {
                     componenteId: idDocumento,
                     componenteNombre: nombreProducto,
                     categoria: categoria,
-                    detalles: 'Eliminado del inventario por ${AuthService.usuarioActual.nombre} (${AuthService.usuarioActual.rol})',
+                    detalles: 'Eliminado del inventario por ${AuthService.usuarioActual.nombre}',
                   );
 
                   if (context.mounted) {
