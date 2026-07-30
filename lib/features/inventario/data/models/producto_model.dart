@@ -21,24 +21,28 @@ class ProductoModel {
       'id': id,
       'grupo': grupo,
       'categoria': categoria,
+      'atributosAdministrativos': atributosAdministrativos,
       'atributos_administrativos': atributosAdministrativos,
+      'especificacionesTecnicas': especificacionesTecnicas,
       'especificaciones_tecnicas': especificacionesTecnicas,
     };
   }
 
   /// Recibe un mapa de Firestore y lo transforma en un objeto usable por Flutter
   factory ProductoModel.fromMap(Map<String, dynamic> map, String documentId) {
+    final Map<String, dynamic> adminMap = Map<String, dynamic>.from(
+      map['atributosAdministrativos'] ?? map['atributos_administrativos'] ?? {},
+    );
+    final Map<String, dynamic> specsMap = Map<String, dynamic>.from(
+      map['especificacionesTecnicas'] ?? map['especificaciones_tecnicas'] ?? {},
+    );
+
     return ProductoModel(
       id: documentId,
       grupo: map['grupo'] ?? '',
       categoria: map['categoria'] ?? '',
-      // El operador Cast asegura que los mapas mantengan el tipado correcto
-      atributosAdministrativos: Map<String, dynamic>.from(
-        map['atributos_administrativos'] ?? {},
-      ),
-      especificacionesTecnicas: Map<String, dynamic>.from(
-        map['especificaciones_tecnicas'] ?? {},
-      ),
+      atributosAdministrativos: adminMap,
+      especificacionesTecnicas: specsMap,
     );
   }
 }

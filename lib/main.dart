@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'features/inventario/data/models/producto_model.dart';
-import 'features/store/presentation/screens/catalogo_store_screen.dart';
+import 'features/inventario/presentation/screens/login_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -44,6 +44,8 @@ class MyApp extends StatelessWidget {
       theme: ThemeData.dark().copyWith(
         scaffoldBackgroundColor: const Color(0xFF050B14),
         cardColor: const Color(0xFF0E1726),
+        canvasColor: const Color(0xFF0E1726),
+        dialogBackgroundColor: const Color(0xFF0E1726),
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF0E1726),
           elevation: 0,
@@ -53,17 +55,36 @@ class MyApp extends StatelessWidget {
           secondary: Color(0xFF007AFF),
           surface: Color(0xFF0E1726),
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          border: OutlineInputBorder(),
-          focusedBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Color(0xFF3AD8FF), width: 2.0),
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: const Color(0xFF050B14),
+          labelStyle: const TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.w500),
+          floatingLabelStyle: const TextStyle(color: Color(0xFF3AD8FF), fontWeight: FontWeight.bold),
+          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: const Color(0xFF007AFF).withValues(alpha: 0.4)),
           ),
           enabledBorder: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: const Color(0xFF007AFF).withValues(alpha: 0.4)),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Color(0xFF3AD8FF), width: 1.5),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.0),
+          ),
+          focusedErrorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: Colors.redAccent, width: 1.5),
           ),
         ),
       ),
-      home: const CatalogoStoreScreen(),
+      home: const LoginScreen(),
     );
   }
 }
