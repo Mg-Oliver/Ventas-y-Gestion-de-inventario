@@ -97,6 +97,21 @@ class _PcBuilderScreenState extends State<PcBuilderScreen> {
                 estado != 'vendido';
           }).toList();
 
+          // Sincronizar _ensamble para remover componentes que hayan sido eliminados de la base de datos
+          final idsExistentes = inventarioCompleto.map((p) => p.id).toSet();
+          bool hubosCambios = false;
+          _ensamble.forEach((key, prod) {
+            if (prod != null && !idsExistentes.contains(prod.id)) {
+              _ensamble[key] = null;
+              hubosCambios = true;
+            }
+          });
+          if (hubosCambios) {
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted) setState(() {});
+            });
+          }
+
           return Column(
             children: [
               // PANEL DE MÉTRICAS / PCPARTPICKER SUMMARY
@@ -175,8 +190,7 @@ class _PcBuilderScreenState extends State<PcBuilderScreen> {
               Expanded(
                 child: _buildMetricCard(
                   'ENERGÍA ESTIMADA',
-                  '${metricas.consumoWattsEstimado} W' +
-                      (metricas.potenciaPsuDisponible > 0 ? ' / ${metricas.potenciaPsuDisponible}W' : ''),
+                  '${metricas.consumoWattsEstimado} W${metricas.potenciaPsuDisponible > 0 ? " / ${metricas.potenciaPsuDisponible}W" : ""}',
                   metricas.potenciaSuficiente ? Colors.yellowAccent : Colors.redAccent,
                   Icons.electric_bolt,
                 ),
